@@ -12,8 +12,6 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`
-
 ## Features
 
 - 3D transformations (translate, rotate, scale)
