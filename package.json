@@ -1,0 +1,10 @@
+{
+  "name": "3d-matrix-manipulation",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix \"3D Matrix Manipulation Frontend\" & npm run dev --prefix backend",
+    "install:all": "npm install --prefix \"3D Matrix Manipulation Frontend\" && npm install --prefix backend",
+    "build": "npm run build --prefix \"3D Matrix Manipulation Frontend\""
+  }
+}

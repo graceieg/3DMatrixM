@@ -10,6 +10,7 @@ export interface SceneObject {
   scale: THREE.Vector3;
   matrix: THREE.Matrix4;
   color: string;
+  visible: boolean;
 }
 
 export interface Transform {
