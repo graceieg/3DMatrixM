@@ -51,13 +51,7 @@ export function ViewportControls() {
 
   const toggleTheme = () => {
     dispatch({ type: 'TOGGLE_THEME' });
-    
-    // Apply theme to document
-    if (state.theme === 'light') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    // App.tsx useEffect handles applying the class to document.documentElement
   };
 
   return (

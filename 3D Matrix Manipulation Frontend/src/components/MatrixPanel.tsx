@@ -5,10 +5,9 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { 
-  RotateCcw, 
-  Calculator, 
-  Eye, 
+import {
+  RotateCcw,
+  Eye,
   Copy,
   RefreshCw,
   ChevronDown,
@@ -18,14 +17,10 @@ import { AdvancedMatrixFeatures } from './AdvancedMatrixFeatures';
 import { useAppContext } from '../contexts/AppContext';
 import { toast } from 'sonner';
 
-type EulerOrder = 'XYZ' | 'YZX' | 'ZXY' | 'XZY' | 'YXZ' | 'ZYX';
-
 export function MatrixPanel() {
   const { state, dispatch } = useAppContext();
   const [customMatrix, setCustomMatrix] = useState<number[]>(Array(16).fill(0));
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [eulerOrder] = useState<EulerOrder>('XYZ');
-  const [quaternion, setQuaternion] = useState({ x: 0, y: 0, z: 0, w: 1 });
 
   const selectedObject = state.objects.find(obj => obj.id === state.selectedObjectId);
 
@@ -87,15 +82,8 @@ export function MatrixPanel() {
 
   const invertMatrix = () => {
     if (!selectedObject) return;
-    
+
     const inverseMatrix = new THREE.Matrix4().copy(selectedObject.mesh.matrix).invert();
-    
-    // If determinant is 0, matrix is not invertible
-    if (inverseMatrix.determinant() === 0) {
-      toast.error('Matrix is not invertible (determinant is 0)');
-      return;
-    }
-    
     selectedObject.mesh.matrix.copy(inverseMatrix);
     selectedObject.mesh.matrixAutoUpdate = false;
     selectedObject.mesh.updateMatrixWorld(true);
@@ -158,12 +146,58 @@ export function MatrixPanel() {
   // Matrix properties
   const matrixDeterminant = currentMatrix.determinant();
   const isOrthogonal = (() => {
-    const m = currentMatrix;
-    const mT = m.clone().transpose();
-    const identity = new THREE.Matrix4().identity();
-    mT.multiply(m);
-    return mT.equals(identity);
+    const mT = currentMatrix.clone().transpose();
+    mT.multiply(currentMatrix);
+    const e = mT.elements;
+    const id = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
+    return e.every((v, i) => Math.abs(v - id[i]) < 1e-4);
   })();
+
+  const applyRotationY45 = () => {
+    if (!selectedObject) return;
+    const rotationMatrix = new THREE.Matrix4().makeRotationY(Math.PI / 4);
+    selectedObject.mesh.matrix.multiply(rotationMatrix);
+    selectedObject.mesh.matrixAutoUpdate = false;
+    selectedObject.mesh.updateMatrixWorld(true);
+    const position = new THREE.Vector3();
+    const quat = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    selectedObject.mesh.matrix.decompose(position, quat, scale);
+    const euler = new THREE.Euler().setFromQuaternion(quat);
+    dispatch({
+      type: 'UPDATE_TRANSFORM',
+      payload: {
+        position: { x: position.x, y: position.y, z: position.z },
+        rotation: { x: euler.x, y: euler.y, z: euler.z },
+        scale: { x: scale.x, y: scale.y, z: scale.z }
+      }
+    });
+    selectedObject.mesh.matrixAutoUpdate = true;
+    toast.success('45° Y rotation applied');
+  };
+
+  const applyScale2x = () => {
+    if (!selectedObject) return;
+    const scaleMatrix = new THREE.Matrix4().makeScale(2, 2, 2);
+    selectedObject.mesh.matrix.multiply(scaleMatrix);
+    selectedObject.mesh.matrixAutoUpdate = false;
+    selectedObject.mesh.updateMatrixWorld(true);
+    const position = new THREE.Vector3();
+    const quat = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    selectedObject.mesh.matrix.decompose(position, quat, scale);
+    const euler = new THREE.Euler().setFromQuaternion(quat);
+    dispatch({
+      type: 'UPDATE_TRANSFORM',
+      payload: {
+        position: { x: position.x, y: position.y, z: position.z },
+        rotation: { x: euler.x, y: euler.y, z: euler.z },
+        scale: { x: scale.x, y: scale.y, z: scale.z }
+      }
+    });
+    selectedObject.mesh.matrixAutoUpdate = true;
+    toast.success('2x scale applied');
+  };
 
   // Handle matrix updates from child components
   const handleMatrixUpdate = (newMatrix: THREE.Matrix4) => {
@@ -369,76 +403,16 @@ export function MatrixPanel() {
                 
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    if (!selectedObject) return;
-                    
-                    // Create a new rotation matrix for 45 degrees around Y axis
-                    const rotationMatrix = new THREE.Matrix4().makeRotationY(Math.PI / 4);
-                    
-                    // Apply rotation to the current matrix
-                    selectedObject.mesh.matrix.multiply(rotationMatrix);
-                    selectedObject.mesh.matrixAutoUpdate = false;
-                    selectedObject.mesh.updateMatrixWorld(true);
-                    
-                    // Decompose the matrix to update position, rotation, and scale
-                    const position = new THREE.Vector3();
-                    const quaternion = new THREE.Quaternion();
-                    const scale = new THREE.Vector3();
-                    selectedObject.mesh.matrix.decompose(position, quaternion, scale);
-                    const euler = new THREE.Euler().setFromQuaternion(quaternion);
-                    
-                    // Update the transform state
-                    dispatch({
-                      type: 'UPDATE_TRANSFORM',
-                      payload: {
-                        position: { x: position.x, y: position.y, z: position.z },
-                        rotation: { x: euler.x, y: euler.y, z: euler.z },
-                        scale: { x: scale.x, y: scale.y, z: scale.z }
-                      }
-                    });
-                    
-                    selectedObject.mesh.matrixAutoUpdate = true;
-                    toast.success('45° Y rotation applied');
-                  }}
+                  onClick={applyRotationY45}
                   disabled={!selectedObject}
                   className="flex items-center gap-2"
                 >
                   Rotate Y 45°
                 </Button>
-                
+
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    if (!selectedObject) return;
-                    
-                    // Create a new scale matrix for 2x scale
-                    const scaleMatrix = new THREE.Matrix4().makeScale(2, 2, 2);
-                    
-                    // Apply scale to the current matrix
-                    selectedObject.mesh.matrix.multiply(scaleMatrix);
-                    selectedObject.mesh.matrixAutoUpdate = false;
-                    selectedObject.mesh.updateMatrixWorld(true);
-                    
-                    // Decompose the matrix to update position, rotation, and scale
-                    const position = new THREE.Vector3();
-                    const quaternion = new THREE.Quaternion();
-                    const scale = new THREE.Vector3();
-                    selectedObject.mesh.matrix.decompose(position, quaternion, scale);
-                    const euler = new THREE.Euler().setFromQuaternion(quaternion);
-                    
-                    // Update the transform state
-                    dispatch({
-                      type: 'UPDATE_TRANSFORM',
-                      payload: {
-                        position: { x: position.x, y: position.y, z: position.z },
-                        rotation: { x: euler.x, y: euler.y, z: euler.z },
-                        scale: { x: scale.x, y: scale.y, z: scale.z }
-                      }
-                    });
-                    
-                    selectedObject.mesh.matrixAutoUpdate = true;
-                    toast.success('2x scale applied');
-                  }}
+                  onClick={applyScale2x}
                   disabled={!selectedObject}
                   className="flex items-center gap-2"
                 >
@@ -516,76 +490,16 @@ export function MatrixPanel() {
                 
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    if (!selectedObject) return;
-                    
-                    // Create a new rotation matrix for 45 degrees around Y axis
-                    const rotationMatrix = new THREE.Matrix4().makeRotationY(Math.PI / 4);
-                    
-                    // Apply rotation to the current matrix
-                    selectedObject.mesh.matrix.multiply(rotationMatrix);
-                    selectedObject.mesh.matrixAutoUpdate = false;
-                    selectedObject.mesh.updateMatrixWorld(true);
-                    
-                    // Decompose the matrix to update position, rotation, and scale
-                    const position = new THREE.Vector3();
-                    const quaternion = new THREE.Quaternion();
-                    const scale = new THREE.Vector3();
-                    selectedObject.mesh.matrix.decompose(position, quaternion, scale);
-                    const euler = new THREE.Euler().setFromQuaternion(quaternion);
-                    
-                    // Update the transform state
-                    dispatch({
-                      type: 'UPDATE_TRANSFORM',
-                      payload: {
-                        position: { x: position.x, y: position.y, z: position.z },
-                        rotation: { x: euler.x, y: euler.y, z: euler.z },
-                        scale: { x: scale.x, y: scale.y, z: scale.z }
-                      }
-                    });
-                    
-                    selectedObject.mesh.matrixAutoUpdate = true;
-                    toast.success('45° Y rotation applied');
-                  }}
+                  onClick={applyRotationY45}
                   disabled={!selectedObject}
                   className="flex items-center gap-2"
                 >
                   Rotate Y 45°
                 </Button>
-                
+
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    if (!selectedObject) return;
-                    
-                    // Create a new scale matrix for 2x scale
-                    const scaleMatrix = new THREE.Matrix4().makeScale(2, 2, 2);
-                    
-                    // Apply scale to the current matrix
-                    selectedObject.mesh.matrix.multiply(scaleMatrix);
-                    selectedObject.mesh.matrixAutoUpdate = false;
-                    selectedObject.mesh.updateMatrixWorld(true);
-                    
-                    // Decompose the matrix to update position, rotation, and scale
-                    const position = new THREE.Vector3();
-                    const quaternion = new THREE.Quaternion();
-                    const scale = new THREE.Vector3();
-                    selectedObject.mesh.matrix.decompose(position, quaternion, scale);
-                    const euler = new THREE.Euler().setFromQuaternion(quaternion);
-                    
-                    // Update the transform state
-                    dispatch({
-                      type: 'UPDATE_TRANSFORM',
-                      payload: {
-                        position: { x: position.x, y: position.y, z: position.z },
-                        rotation: { x: euler.x, y: euler.y, z: euler.z },
-                        scale: { x: scale.x, y: scale.y, z: scale.z }
-                      }
-                    });
-                    
-                    selectedObject.mesh.matrixAutoUpdate = true;
-                    toast.success('2x scale applied');
-                  }}
+                  onClick={applyScale2x}
                   disabled={!selectedObject}
                   className="flex items-center gap-2"
                 >
@@ -633,7 +547,7 @@ export function MatrixPanel() {
                 {customMatrix.map((value, index) => (
                   <div key={index} className="space-y-1">
                     <Label className="text-xs text-muted-foreground">
-                      m{Math.floor(index / 4)}{index % 4}
+                      m{index % 4}{Math.floor(index / 4)}
                     </Label>
                     <Input
                       type="number"
