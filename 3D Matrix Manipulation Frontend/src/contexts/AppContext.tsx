@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { AppState, SceneObject, Transform, ViewportSettings } from '../types';
 
 interface AppAction {
-  type: 
+  type:
     | 'ADD_OBJECT'
     | 'REMOVE_OBJECT'
     | 'SELECT_OBJECT'
@@ -11,7 +11,8 @@ interface AppAction {
     | 'RESET_TRANSFORM'
     | 'UPDATE_VIEWPORT_SETTINGS'
     | 'TOGGLE_THEME'
-    | 'UPDATE_OBJECT_MATRIX';
+    | 'UPDATE_OBJECT_MATRIX'
+    | 'TOGGLE_OBJECT_VISIBILITY';
   payload?: any;
 }
 
@@ -107,13 +108,24 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'UPDATE_OBJECT_MATRIX':
       return {
         ...state,
-        objects: state.objects.map(obj => 
-          obj.id === action.payload.id 
+        objects: state.objects.map(obj =>
+          obj.id === action.payload.id
             ? { ...obj, matrix: action.payload.matrix }
             : obj
         )
       };
-    
+
+    case 'TOGGLE_OBJECT_VISIBILITY':
+      return {
+        ...state,
+        objects: state.objects.map(obj => {
+          if (obj.id !== action.payload) return obj;
+          const newVisible = !obj.visible;
+          obj.mesh.visible = newVisible;
+          return { ...obj, visible: newVisible };
+        })
+      };
+
     default:
       return state;
   }

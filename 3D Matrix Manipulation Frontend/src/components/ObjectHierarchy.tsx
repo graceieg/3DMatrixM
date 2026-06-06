@@ -73,7 +73,8 @@ export function ObjectHierarchy() {
       rotation: mesh.rotation.clone(),
       scale: mesh.scale.clone(),
       matrix: mesh.matrix.clone(),
-      color
+      color,
+      visible: true
     };
 
     dispatch({ type: 'ADD_OBJECT', payload: sceneObject });
@@ -98,10 +99,7 @@ export function ObjectHierarchy() {
   };
 
   const toggleObjectVisibility = (id: string) => {
-    const obj = state.objects.find(o => o.id === id);
-    if (obj) {
-      obj.mesh.visible = !obj.mesh.visible;
-    }
+    dispatch({ type: 'TOGGLE_OBJECT_VISIBILITY', payload: id });
   };
 
   const getObjectIcon = (type: SceneObject['type']) => {
@@ -178,7 +176,7 @@ export function ObjectHierarchy() {
                         }}
                         className="h-8 w-8 p-0"
                       >
-                        {obj.mesh.visible ? (
+                        {obj.visible ? (
                           <Eye className="w-4 h-4" />
                         ) : (
                           <EyeOff className="w-4 h-4" />

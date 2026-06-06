@@ -20,6 +20,7 @@ export function AdvancedMatrixFeatures({
   onMatrixUpdate,
 }: AdvancedMatrixFeaturesProps) {
   const [eulerOrder, setEulerOrder] = useState<EulerOrder>('XYZ');
+  const [eulerAngles, setEulerAngles] = useState({ x: 0, y: 0, z: 0 });
   const [quaternion, setQuaternion] = useState({ x: 0, y: 0, z: 0, w: 1 });
   
   // Matrix properties
@@ -98,18 +99,18 @@ export function AdvancedMatrixFeatures({
         </div>
         
         <div className="grid grid-cols-3 gap-3 mb-3">
-          {['X', 'Y', 'Z'].map((axis) => (
+          {(['x', 'y', 'z'] as const).map((axis) => (
             <div key={axis} className="space-y-1">
-              <Label className="text-xs">{axis}-Axis (degrees)</Label>
+              <Label className="text-xs">{axis.toUpperCase()}-Axis (degrees)</Label>
               <Input
                 type="number"
-                defaultValue="0"
+                value={eulerAngles[axis]}
                 onChange={(e) => {
                   const value = parseFloat(e.target.value);
                   if (!isNaN(value)) {
-                    const angles = { x: 0, y: 0, z: 0 };
-                    angles[axis.toLowerCase() as 'x' | 'y' | 'z'] = value;
-                    applyEulerAngles(angles.x, angles.y, angles.z);
+                    const next = { ...eulerAngles, [axis]: value };
+                    setEulerAngles(next);
+                    applyEulerAngles(next.x, next.y, next.z);
                   }
                 }}
                 className="h-8"
@@ -229,9 +230,10 @@ function getMatrixNorm(matrix: THREE.Matrix4): number {
 }
 
 function checkIfOrthogonal(matrix: THREE.Matrix4): boolean {
-  const m = matrix;
-  const mT = m.clone().transpose();
-  const identity = new THREE.Matrix4().identity();
-  mT.multiply(m);
-  return mT.equals(identity);
+  const mT = matrix.clone().transpose();
+  mT.multiply(matrix);
+  const e = mT.elements;
+  const identity = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
+  const eps = 1e-4;
+  return e.every((v, i) => Math.abs(v - identity[i]) < eps);
 }
